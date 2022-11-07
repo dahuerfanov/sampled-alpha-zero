@@ -5,6 +5,7 @@ import numpy as np
 import threading
 import time
 import torch
+import os
 
 from agent import Agent
 from data_handler import DataProvider, save_new_samples
@@ -101,7 +102,7 @@ def evaluate_model(models_path: str,
     if rate >= args.threshold:
         with best_model_name_lock:
             best_model_name = current_model_name
-        print("better model found!")
+        print("better model found!:", current_model_name)
 
 
 def self_play_episode(agent, args):
@@ -175,17 +176,18 @@ def policy_iteration(data_path: str,
     thread_self_play = threading.Thread(target=self_play,
                                         args=(data_path, models_path, device, args))
     thread_self_play.start()
-    time.sleep(1)
+    time.sleep(args.sleep_secs_before_train)
    
     data_prov = DataProvider(data_path, args.max_num_samples_mem)    
     plotter = Plotter(figures_path)
 
     for it in range(args.num_iters):
+        current_model_name = f"model_it{it}"
         nnet = NNet("NNet", device, args)
         X, Y_val, Y_distr = data_prov.select_samples(args.sample_size)
 
         stats = nnet.run_training(X, Y_val, Y_distr)
-        torch.save(nnet.state_dict(), os.path.join(models_path, f"model_it{it}"))
+        torch.save(nnet.state_dict(), os.path.join(models_path, current_model_name))
         plotter.save_plots(it,
                            stats['p_train_losses'],
                            stats['p_val_losses'],

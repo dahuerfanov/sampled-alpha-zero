@@ -17,4 +17,4 @@ class CategoricalCrossEntropy(_Loss):
 
     def forward(self, x: Tensor, target: Tensor) -> Tensor:
         batch_sz = x.size(dim=0)
-        return -torch.sum( x * torch.log(target + EPS), 1) / bath_sz
+        return -torch.sum( x * torch.log(target + EPS)) / batch_sz

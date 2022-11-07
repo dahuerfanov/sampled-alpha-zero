@@ -19,7 +19,7 @@ class Agent:
         self.nnet = NNet("NNet", device, args)
         self.mcts = MCTS(args)
         if not saved_model_path is None:
-            m_state_dict = torch.load(load_model_path, map_location=device)
+            m_state_dict = torch.load(saved_model_path, map_location=device)
             self.nnet.load_state_dict(m_state_dict)
 
 

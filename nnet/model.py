@@ -96,9 +96,7 @@ class NNet(Module):
         # ========forward pass=====================================
         v_output_train, p_output_train = self(x_train)
 
-        #v_loss_train = self.criterion_v(v_output_train.reshape(list(v_output_train.size())[0]), v_train)
-        print("size v out", v_output_train.size())
-        print("size v train", v_train.size())
+        v_output_train = torch.flatten(v_output_train)
         v_loss_train = self.criterion_v(v_output_train, v_train)
         p_loss_train = self.criterion_p(p_output_train, p_train)
         loss_train = v_loss_train + p_loss_train
@@ -117,6 +115,7 @@ class NNet(Module):
         # ========forward pass=====================================
         with torch.no_grad():
             v_output, p_output = self(x)
+            v_output = torch.flatten(v_output)
             v_loss = self.criterion_v(v_output, v)
             p_loss = self.criterion_p(p_output, p)
 

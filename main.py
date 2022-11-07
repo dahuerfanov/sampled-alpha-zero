@@ -1,6 +1,6 @@
 import torch
 
-from alphaZero import policy_iteration
+from alpha_zero_launcher import policy_iteration
 from options import AlphaZeroOptions
 
 options = AlphaZeroOptions()

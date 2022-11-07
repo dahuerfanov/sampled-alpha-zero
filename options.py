@@ -37,7 +37,7 @@ class AlphaZeroOptions:
         self.parser.add_argument("--epochs",
                                  type=int,
                                  help="Epochs for training cnn in each iteration",
-                                 default=75)
+                                 default=100)
 
         self.parser.add_argument("--momentum_sgd",
                                  type=float,
@@ -62,7 +62,7 @@ class AlphaZeroOptions:
         self.parser.add_argument("--num_eps",
                                  type=int,
                                  help="number of simulations of self-play",
-                                 default=100)
+                                 default=500)
 
         self.parser.add_argument("--num_eps_pit",
                                  type=int,
@@ -89,6 +89,11 @@ class AlphaZeroOptions:
                                  help="alpha constant of Dirichlet Noise in mcts",
                                  default=1)
 
+        self.parser.add_argument("--sleep_secs_before_train",
+                                 type=int,
+                                 help="secs of data generation by self-play before start training",
+                                 default=5*60)
+
         self.parser.add_argument("--eps_n",
                                  type=float,
                                  help="eps constant of Dirichlet Noise in mcts",
@@ -97,12 +102,12 @@ class AlphaZeroOptions:
         self.parser.add_argument("--max_num_samples_mem",
                                  type=int,
                                  help="max. number of episodes in memory to train new cnn's",
-                                 default=10000)
+                                 default=500000)
 
         self.parser.add_argument("--sample_size",
                                  type=int,
                                  help="board sample size to choose from old episodes in memory",
-                                 default=100000)
+                                 default=10000000)
 
         self.parser.add_argument("--num_channels_cnn",
                                  type=int,
