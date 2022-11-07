@@ -14,10 +14,6 @@ from nnet.model import NNet
 from plotter import Plotter
 
 
-best_model_name_lock = threading.Lock()
-best_model_name = None
-
-
 # episode simulation of agent1 vs agent2:
 def simulate_episode(agent1: Agent, agent2: Agent, args: Dict):
     s = torch.zeros(2, args.rows, args.cols, dtype=torch.float32, device=torch.device("cpu"))
@@ -61,24 +57,23 @@ def simulate_episode(agent1: Agent, agent2: Agent, args: Dict):
 
 
 def evaluate_model(models_path: str,
-                   it: int,
+                   best_model_path: str,
                    device: str,
                    args: Dict) -> None:
 
-    global best_model_name
-    current_model_name = f"model_it{it}"
+    dirs_list = [int(subdir) for subdir in os.listdir(models_path)]
+    if len(dirs_list) == 0:
+        return
+    dirs_list.sort()
+    current_model_name = str(dirs_list[-1])
 
-    if not os.path.isfile(os.path.join(models_path, current_model_name)):
-        return it
+    if not os.path.isfile(best_model_path):
+        m_state_dict = torch.load(os.path.join(models_path, current_model_name), map_location=device)
+        torch.save(m_state_dict, best_model_path)
+        return
 
-    with best_model_name_lock:
-        if best_model_name is None:
-            best_model_name = current_model_name
-            print("new model selected!:", current_model_name)
-            return
-
-        agent1 = Agent(device, os.path.join(models_path, best_model_name), args)
-        agent2 = Agent(device, os.path.join(models_path, current_model_name), args)
+    agent1 = Agent(device, best_model_path, args)
+    agent2 = Agent(device, os.path.join(models_path, current_model_name), args)
 
     agent1.nnet.eval()
     agent2.nnet.eval()
@@ -102,13 +97,11 @@ def evaluate_model(models_path: str,
     else:
         rate, rounds = count / tot, tot
 
-    print("rate nnet2 vs nnet1: ", rate, n)
+    print("rate nnet2 vs nnet1: ", rate, rounds)
     if rate >= args.threshold:
-        with best_model_name_lock:
-            best_model_name = current_model_name
-        print("better model found!:", current_model_name)
-
-    return it + 1
+        m_state_dict = torch.load(os.path.join(models_path, current_model_name), map_location=device)
+        torch.save(m_state_dict, best_model_path)
+        print("better model found:", current_model_name)
 
 
 def self_play_episode(agent, args):
@@ -136,6 +129,7 @@ def self_play_episode(agent, args):
             a = random.choice([col for col in range(args.cols) if s[0][0][col] + s[1][0][col] == 0])
         step(s, a, 0, args)
         r, done = game_reward(s, 0, args)
+        print("self play eps:", r, done)
         if done:
             for _ in range(len(samples_s)):
                 samples_v.append(torch.tensor(r, requires_grad=False, device=torch.device("cpu")))
@@ -153,32 +147,34 @@ def self_play_episode(agent, args):
             s = torch.flip(s, [0])
 
 
-def self_play(data_path: str, models_path: str, device: str, args: Dict):
-
-    global best_model_name
+def self_play(data_path: str,
+              best_model_path: str,
+              device: str,
+              args: Dict):
 
     while True:
-        if not best_model_name is None:
-            agent = Agent(device, os.path.join(models_path, best_model_name), args)
+        if os.path.isfile(best_model_path):
+            agent = Agent(device, best_model_path, args)
         else:
             agent = Agent(device, None, args)
-        print(agent.nnet)
 
         for e in range(args.num_eps):
             s1, s2, s3 = self_play_episode(agent, args)
             save_new_samples(data_path, s1, s2, s3)
 
 
-def run_train_it(data_prov: DataProvider,
+def run_train_it(data_path: str,
+                 figures_path: str,
                  models_path: str,
-                 plotter: Plotter,
                  device: str,
                  args: Dict) -> None:
 
+    data_prov = DataProvider(data_path, args.max_num_samples_mem)
+    plotter = Plotter(figures_path)
     it = -1
     while True:
         it += 1
-        current_model_name = f"model_it{it}"
+        current_model_name = f"{it}"
         nnet = NNet("NNet", device, args)
         X, Y_val, Y_distr = data_prov.select_samples(args.sample_size)
         stats = nnet.run_training(X, Y_val, Y_distr)
@@ -195,29 +191,24 @@ def run_train_it(data_prov: DataProvider,
 
 def policy_iteration(data_path: str,
                      models_path: str,
+                     best_model_path: str,
                      figures_path: str,
                      device: str,
                      args: Dict) -> None:
 
-    global best_model_name
 
     random.seed(0)
-    with best_model_name_lock:
-        best_model_name = args.model_name
 
     thread_self_play = threading.Thread(target=self_play,
-                                        args=(data_path, models_path, device, args))
+                                        args=(data_path, best_model_path, "cpu", args))
     thread_self_play.start()
 
     time.sleep(args.sleep_secs_before_train)
 
-    data_prov = DataProvider(data_path, args.max_num_samples_mem)
-    plotter = Plotter(figures_path)
     thread_trainer = threading.Thread(target=run_train_it,
-                                      args=(data_prov, models_path,
-                                            plotter, device, args))
+                                      args=(data_path, figures_path, models_path,
+                                            device, args))
     thread_trainer.start()
    
-    it = 0
     while True:
-        it = evaluate_model(models_path, it, device, args)
+        evaluate_model(models_path, best_model_path, "cpu", args)

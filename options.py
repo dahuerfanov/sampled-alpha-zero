@@ -67,7 +67,7 @@ class AlphaZeroOptions:
         self.parser.add_argument("--num_eps_pit",
                                  type=int,
                                  help="number of simulations to pit the new and the best cnn",
-                                 default=51)
+                                 default=21)
 
         self.parser.add_argument("--batch",
                                  type=int,

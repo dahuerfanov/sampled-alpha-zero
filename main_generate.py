@@ -1,6 +1,6 @@
 import torch
 
-from alpha_zero_launcher import policy_iteration
+from alpha_zero_launcher import self_play
 from options import AlphaZeroOptions
 
 options = AlphaZeroOptions()
@@ -15,9 +15,7 @@ if __name__ == "__main__":
         device = torch.device("cpu")
         print("Using CPU :(")
 
-    policy_iteration(data_path="data/structures/",
-                     models_path="data/models/",
-                     best_model_path="data/best",
-                     figures_path="data/figures/",
-                     device=device,
-                     args=opts)
+    self_play(data_path="data/structures/",
+              best_model_path="data/best",
+              device=device,
+              args=opts)
