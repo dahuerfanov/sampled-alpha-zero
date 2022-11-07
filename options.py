@@ -77,7 +77,7 @@ class AlphaZeroOptions:
         self.parser.add_argument("--num_mcts_sims",
                                  type=int,
                                  help="number of mcts simulations",
-                                 default=200)
+                                 default=35)
 
         self.parser.add_argument("--threshold",
                                  type=float,
@@ -92,7 +92,7 @@ class AlphaZeroOptions:
         self.parser.add_argument("--sleep_secs_before_train",
                                  type=int,
                                  help="secs of data generation by self-play before start training",
-                                 default=5*60)
+                                 default=0)
 
         self.parser.add_argument("--eps_n",
                                  type=float,
@@ -113,6 +113,11 @@ class AlphaZeroOptions:
                                  type=int,
                                  help="nr. of channels in cnn architecture",
                                  default=256)
+
+        self.parser.add_argument("--model_name",
+                                 type=str,
+                                 help="saved model to start algo from. None from scratch",
+                                 default=None)
 
 
     def parse(self):

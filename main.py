@@ -8,7 +8,6 @@ opts = options.parse()
 
 if __name__ == "__main__":
 
-    # for GPU
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
         print("Using GPU!", torch.cuda.get_device_name(None))
@@ -18,7 +17,6 @@ if __name__ == "__main__":
 
     policy_iteration(data_path="data/structures/",
                      models_path="data/models/",
-                     model_name=None,
                      figures_path="data/figures/",
                      device=device,
                      args=opts)

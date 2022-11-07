@@ -61,16 +61,20 @@ def simulate_episode(agent1: Agent, agent2: Agent, args: Dict):
 
 
 def evaluate_model(models_path: str,
-                   current_model_name: str,
+                   it: int,
                    device: str,
                    args: Dict) -> None:
 
     global best_model_name
+    current_model_name = f"model_it{it}"
+
+    if not os.path.isfile(os.path.join(models_path, current_model_name)):
+        return it
 
     with best_model_name_lock:
         if best_model_name is None:
             best_model_name = current_model_name
-            print("new model selected!")
+            print("new model selected!:", current_model_name)
             return
 
         agent1 = Agent(device, os.path.join(models_path, best_model_name), args)
@@ -103,6 +107,8 @@ def evaluate_model(models_path: str,
         with best_model_name_lock:
             best_model_name = current_model_name
         print("better model found!:", current_model_name)
+
+    return it + 1
 
 
 def self_play_episode(agent, args):
@@ -163,29 +169,18 @@ def self_play(data_path: str, models_path: str, device: str, args: Dict):
             save_new_samples(data_path, s1, s2, s3)
 
 
-def policy_iteration(data_path: str,
-                     models_path: str,
-                     model_name: str,
-                     figures_path: str,
-                     device: str,
-                     args: Dict):
+def run_train_it(data_prov: DataProvider,
+                 models_path: str,
+                 plotter: Plotter,
+                 device: str,
+                 args: Dict) -> None:
 
-    random.seed(0)
-    best_model_name = model_name
-
-    thread_self_play = threading.Thread(target=self_play,
-                                        args=(data_path, models_path, device, args))
-    thread_self_play.start()
-    time.sleep(args.sleep_secs_before_train)
-   
-    data_prov = DataProvider(data_path, args.max_num_samples_mem)    
-    plotter = Plotter(figures_path)
-
-    for it in range(args.num_iters):
+    it = -1
+    while True:
+        it += 1
         current_model_name = f"model_it{it}"
         nnet = NNet("NNet", device, args)
         X, Y_val, Y_distr = data_prov.select_samples(args.sample_size)
-
         stats = nnet.run_training(X, Y_val, Y_distr)
         torch.save(nnet.state_dict(), os.path.join(models_path, current_model_name))
         plotter.save_plots(it,
@@ -196,6 +191,33 @@ def policy_iteration(data_path: str,
                            stats['v_train_acc'],
                            stats['v_val_acc'])
 
-        thread_evaluator = threading.Thread(target=evaluate_model,
-                                            args=(models_path, current_model_name, device, args))
-        thread_evaluator.start()
+
+
+def policy_iteration(data_path: str,
+                     models_path: str,
+                     figures_path: str,
+                     device: str,
+                     args: Dict) -> None:
+
+    global best_model_name
+
+    random.seed(0)
+    with best_model_name_lock:
+        best_model_name = args.model_name
+
+    thread_self_play = threading.Thread(target=self_play,
+                                        args=(data_path, models_path, device, args))
+    thread_self_play.start()
+
+    time.sleep(args.sleep_secs_before_train)
+
+    data_prov = DataProvider(data_path, args.max_num_samples_mem)
+    plotter = Plotter(figures_path)
+    thread_trainer = threading.Thread(target=run_train_it,
+                                      args=(data_prov, models_path,
+                                            plotter, device, args))
+    thread_trainer.start()
+   
+    it = 0
+    while True:
+        it = evaluate_model(models_path, it, device, args)
