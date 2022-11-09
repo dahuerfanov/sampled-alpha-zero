@@ -5,7 +5,7 @@ import math
 import numpy as np
 import torch
 
-from game import game_reward, reflect, step, stateToInt
+from game import GameEnv
 from nnet.model import NNet
 
 
@@ -23,42 +23,32 @@ class Agent:
             self.nnet.load_state_dict(m_state_dict)
 
 
-class MCTS:
+class TreeNode:
 
-    def __init__(self, args):
-        self.clear()
-        self.args = args
+    def __init__(self, s: Tensor, t: Tensor, u: int, v: int):
 
-
-    def clear(self):
+        self.s = s
+        self.t = t
+        self.u = u
+        self.v = v
+        assert s[u][v]
         self.Q = dict()
         self.P = dict()
         self.N = dict()
+        self.children = dict()
 
 
-    def search(self, s, nnet):
-        """
-         Returns:
-            v: the negative of the value of the current state s
-        """
+    def search(self,
+               nnet: NNet,
+               K: int,
+               game_env: GameEnv,
+               is_root: bool = True):
 
-        v, done = game_reward(s, 1, self.args)
+        v, done = game_env.reward(self.s)
         if done: return v
 
-        v, P = nnet.predict(s)
-        s0 = stateToInt(s, self.args)
-
-        if not s0 in self.N:
-            self.Q[s0] = [0] * self.args.cols
-            self.N[s0] = np.array([0] * self.args.cols)
-            self.P[s0] = P
-
-            s1 = stateToInt(reflect(s), self.args)
-            self.Q[s1] = self.Q[s0][::-1]
-            self.N[s1] = self.N[s0][::-1]
-            self.P[s1] = self.P[s0][::-1]
-
-            return -v
+        v = nnet.predict(s, t)
+        #if not is_root: return v
 
         noise = dirichlet.rvs(np.array([self.args.alpha_n] * self.args.cols), size=1)
 

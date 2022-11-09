@@ -1,6 +1,39 @@
+
+from typing import List, Tuple
+
+from torch import Tensor
 import torch
 
 deltas = [[[0, 0, 0], [1, 2, 3]], [[1, 2, 3], [0, 0, 0]], [[1, 2, 3], [1, 2, 3]], [[-1, -2, -3], [1, 2, 3]]]
+
+
+class GameEnv:
+
+    def __init__(self, rows: int, cols: int, n_paths: int):
+
+        self.rows = rows
+        self.cols = cols
+        self.n_paths = n_paths
+        self.zero = torch.zeros([n_paths, rows, cols], dtype=torch.bool, device="cpu")
+
+
+    def reward(self, s: Tensor) -> Tuple[float, bool]:
+
+        if torch.equal(s, self.zero):
+            return 1, True
+
+        if torch.any(torch.sum(s, dim=0) > 1):
+            # any pair of paths blocked
+            return -1, True
+
+        return 0, False
+
+
+    def step(self, s: Tensor, advance: List[Tuple[int, int, int]]):
+
+        for (i, u, v) in advance:
+            s[i][u][v] = False
+
 
 
 def game_reward(s, ch, args):
